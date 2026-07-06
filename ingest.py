@@ -12,12 +12,12 @@ from pathlib import Path
 import re
 import fitz     # PyMuPDF
 import config
-import spaCy
+import spacy
 
 # --------------------------------------------------
 # DOCUMENT INGESTION
 # --------------------------------------------------
-# 1. Read all PDFs from a folder and validate them
+# 1. Read all PDFs from a folder and validate them using PyMuPDF
 # --------------------------------------------------
 
 def extract_uploads(folder: str) -> list[str]:
@@ -149,18 +149,39 @@ def chunk_text(pages: list[dict], file_path: str) -> list[dict]:
 # 4. spaCy named entity extraction per chunk
 # --------------------------------------------------
 
+def extract_entities(text: str) -> str:
+    """Cleans and annotates text using spaCy."""
+    # tokenization
+    nlp = spacy.load("en_core_web_sm")
+    doc = nlp(text)
+    # NER
+    ner = []
+    for ent in doc.ents:
+        entity = ent.text
+        label = ent.label_
+        # print(f"Entity: {entity:<12} | Label: {label:<12} | Explanation: {spacy.explain(label)}")
+        ner.append(f"{entity} {label}")
+    
+    print(f"    [STATUS:SUCCESS]  ENTITY_EXTRACTION.")
+    return ", ".join(ner) if ner else ""
 
 # --------------------------------------------------
 # Smoke test
 # --------------------------------------------------
 
-my_sources = extract_uploads(config.PDF_FOLDER)
-print(my_sources)
 
-for source in my_sources:
-    if is_file_valid(source)[0]:
-        extracted_pages = extract_pages(file_path=source)
-        # print(extracted_pages)
-        chunk_text(extracted_pages, source)
+### smoke test 1-3: text extraction and chunking
+# my_sources = extract_uploads(config.PDF_FOLDER)
+# print(my_sources)
 
-print("D    O   N   E")
+# for source in my_sources:
+#     if is_file_valid(source)[0]:
+#         extracted_pages = extract_pages(file_path=source)
+#         # print(extracted_pages)
+#         chunk_text(extracted_pages, source)
+
+# print("D    O   N   E")
+
+### smoke test 4: named entity recognition
+test_sentence = "Apple is looking at buying U.K. startups for $1 billion. Employees loved working there."
+print(extract_entities(text=test_sentence))
