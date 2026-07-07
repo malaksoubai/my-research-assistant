@@ -5,19 +5,55 @@
 # 3. Chunk text and attach metadata (filename, page_num, chunk_id)
 # NLP PREPROCESSING
 # 4. spaCy named entity extraction per chunk
+# EMBEDDING + STORAGE
+# 5. vectorize chunks and store in chromaDB
 
+
+import config
 
 import os
 from pathlib import Path
 import re
 import fitz     # PyMuPDF
-import config
 import spacy
+import chromadb
+from sentence_transformers import SentenceTransformer
+
+
+# --------------------------------------------------
+# SETUP
+# --------------------------------------------------
+# 0. Load all tools
+# --------------------------------------------------
+
+def load_tools() -> None:
+    """Load all necessary tools once to prevent reload."""
+    print(f"    [STATUS:STARTED]  TOOLS_LOADING.")
+    try:
+        # tokenization
+        nlp = spacy.load(config.NLP_MODEL)
+
+        # save data in a local directory, db instance
+        client = chromadb.PersistentClient(path=config.P_DB_PATH)
+
+        # vectorization (list of nums) for embeddings, rows in table 
+        embedder = SentenceTransformer(config.EMBEDDING_MODEL)
+
+        # the table 
+        collection = client.get_or_create_collection(name=config.COLLECTION_NAME)
+    except Exception as e:
+        print(f"    [STATUS:FAILED]  TOOLS_LOADING.")
+        print(f"ERROR occurred: {e}")
+        return
+
+    print(f"    [STATUS:SUCCESS]  TOOLS_LOADING.")
+
+    return nlp, client, embedder, collection
 
 # --------------------------------------------------
 # DOCUMENT INGESTION
 # --------------------------------------------------
-# 1. Read all PDFs from a folder and validate them using PyMuPDF
+# 1. Read all PDFs and validate them using PyMuPDF
 # --------------------------------------------------
 
 def extract_uploads(folder: str) -> list[str]:
@@ -149,10 +185,9 @@ def chunk_text(pages: list[dict], file_path: str) -> list[dict]:
 # 4. spaCy named entity extraction per chunk
 # --------------------------------------------------
 
-def extract_entities(text: str) -> str:
+def extract_entities(text: str, nlp) -> str:
     """Cleans and annotates text using spaCy."""
-    # tokenization
-    nlp = spacy.load("en_core_web_sm")
+    # now used in load_tools(): nlp = spacy.load("en_core_web_sm")
     doc = nlp(text)
     # NER
     ner = []
@@ -166,11 +201,50 @@ def extract_entities(text: str) -> str:
     return ", ".join(ner) if ner else ""
 
 # --------------------------------------------------
-# Smoke test
+# EMBEDDING + STORAGE
+# --------------------------------------------------
+# 5. vectorize chunks and store in chromaDB
 # --------------------------------------------------
 
+def embed_and_store(chunks: list[dict], nlp, embedder, collection) -> None:
+    """Vectorize chunks and store them in chromaDB."""
+    
+    if not chunks:
+        return
 
-### smoke test 1-3: text extraction and chunking
+    texts = [c["text"] for c in chunks]
+    ids = [c["chunk_id"] for c in chunks] # ids=filename_chunkId
+
+    embeddings = embedder.encode(texts).tolist()
+    metadata = []
+
+    for c in chunks:
+        entities = extract_entities(c["text"], nlp)
+        metadata.append({
+            "filename": c["filename"],
+            "page": c["page_num"],
+            "entities": entities,
+        })
+
+    collection.add(    
+        ids = ids,
+        embeddings = embeddings,
+        texts = texts,
+        metadata = metadata
+    )
+
+
+# --------------------------------------------------
+# MAIN PIPELINE
+# --------------------------------------------------
+
+# TODO
+
+# --------------------------------------------------
+# SMOKE TESTS
+# --------------------------------------------------
+# smoke test 1-3: text extraction and chunking
+# --------------------------------------------------
 # my_sources = extract_uploads(config.PDF_FOLDER)
 # print(my_sources)
 
@@ -182,6 +256,11 @@ def extract_entities(text: str) -> str:
 
 # print("D    O   N   E")
 
-### smoke test 4: named entity recognition
+# --------------------------------------------------
+# smoke test 4: named entity recognition
+# --------------------------------------------------
+# NOTE: to run, uncomment the tokenization
 test_sentence = "Apple is looking at buying U.K. startups for $1 billion. Employees loved working there."
 print(extract_entities(text=test_sentence))
+
+
