@@ -16,7 +16,7 @@ NLP_MODEL = "en_core_web_sm"
 # ChromaDB
 P_DB_PATH = "./chroma_db"
 E_DB_PATH = "./ephemeral_db"
-COLLECTION_NAME = ""
+COLLECTION_NAME = "research_papers"
 
 # Sentence Transformer
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"
