@@ -26,7 +26,7 @@ from sentence_transformers import SentenceTransformer
 # 0. Load all tools
 # --------------------------------------------------
 
-def load_tools() -> None:
+def load_tools():
     """Load all necessary tools once to prevent reload."""
     print(f"    [STATUS:STARTED]  TOOLS_LOADING.")
     try:
@@ -114,11 +114,12 @@ def clean_text(text: str) -> str:
 def extract_pages(file_path: str) -> list[dict]:
     """Returns  a list of {page_num: text} for every page in file.
     Flags pages with suspiciously little text which were likely scanned and not digital."""
-    try:
-        doc = fitz.open(file_path)
-    except Exception as e:
-        print(f"Error occurred while opening {file_path}: {e}")
-        return []
+    # NOTE: redundant from is_file_valid()
+    # try:
+    #     doc = fitz.open(file_path)
+    # except Exception as e:
+    #     print(f"Error occurred while opening {file_path}: {e}")
+    #     return []
     
     pages = []
     for page_num, page in enumerate(doc, start = 1):
@@ -189,7 +190,7 @@ def extract_entities(text: str, nlp) -> str:
     """Cleans and annotates text using spaCy."""
     # now used in load_tools(): nlp = spacy.load("en_core_web_sm")
     doc = nlp(text)
-    # NER
+    # NER - needed for semantic search/retrieval
     ner = []
     for ent in doc.ents:
         entity = ent.text
@@ -215,30 +216,50 @@ def embed_and_store(chunks: list[dict], nlp, embedder, collection) -> None:
     texts = [c["text"] for c in chunks]
     ids = [c["chunk_id"] for c in chunks] # ids=filename_chunkId
 
-    embeddings = embedder.encode(texts).tolist()
-    metadata = []
+    try:
+        embeddings = embedder.encode(texts).tolist()
+    except Exception as e:
+        print(f"ERROR occurred: {e}")
+        print(f"    [STATUS:FAILED]  VECTOR_EMBEDDING.")
+        return
+    
+    print(f"    [STATUS:SUCCESS]  VECTOR_EMBEDDING.")
+
+    metadatas = []
 
     for c in chunks:
         entities = extract_entities(c["text"], nlp)
-        metadata.append({
+        metadatas.append({
             "filename": c["filename"],
             "page": c["page_num"],
             "entities": entities,
         })
 
-    collection.add(    
-        ids = ids,
-        embeddings = embeddings,
-        texts = texts,
-        metadata = metadata
-    )
+    try:
+        collection.add(    
+            ids = ids,                  # required (list[str])
+            documents = texts,          # optional (list[str])
+            embeddings = embeddings,    # optional (list[list[float]])
+            metadatas = metadatas       # optional (list[dict])
+        )
+
+    except Exception as e:
+        print(f"ERROR occurred: {e}")
+        print(f"    [STATUS:FAILED]  VECTOR_STORAGE.")
+        return
+
+    print(f"    [STATUS:SUCCESS]  VECTOR_STORAGE.")
 
 
 # --------------------------------------------------
-# MAIN PIPELINE
+# 7. Ingestion pipeline
 # --------------------------------------------------
 
-# TODO
+
+
+# --------------------------------------------------
+# 7. Ingestion pipeline
+# --------------------------------------------------
 
 # --------------------------------------------------
 # SMOKE TESTS
@@ -261,6 +282,18 @@ def embed_and_store(chunks: list[dict], nlp, embedder, collection) -> None:
 # --------------------------------------------------
 # NOTE: to run, uncomment the tokenization
 test_sentence = "Apple is looking at buying U.K. startups for $1 billion. Employees loved working there."
-print(extract_entities(text=test_sentence))
+# print(extract_entities(text=test_sentence))
 
+# --------------------------------------------------
+# smoke test 4: embeddings and storing
+# --------------------------------------------------
+nlp, client, embedder, collection = load_tools()
 
+test_chunk = [{
+    "text": test_sentence,
+    "filename": "Test-file",
+    "page_num": 1,
+    "chunk_id": "Test-file_0"
+}]
+
+embed_and_store(test_chunk, nlp, embedder, collection)
