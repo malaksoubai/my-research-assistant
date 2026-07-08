@@ -28,7 +28,7 @@ from sentence_transformers import SentenceTransformer
 
 def load_tools():
     """Load all necessary tools once to prevent reload."""
-    print(f"    [STATUS:STARTED]  TOOLS_LOADING.")
+    print(f"    [STATUS:STARTED]  TOOLS LOADING.")
     try:
         # tokenization
         nlp = spacy.load(config.NLP_MODEL)
@@ -42,13 +42,13 @@ def load_tools():
         # the table 
         collection = client.get_or_create_collection(name=config.COLLECTION_NAME)
     except Exception as e:
-        print(f"    [STATUS:FAILED]  TOOLS_LOADING.")
+        print(f"    [STATUS:FAILED]  TOOLS NOT LOADED.")
         print(f"ERROR occurred: {e}")
         return
 
-    print(f"    [STATUS:SUCCESS]  TOOLS_LOADING.")
+    print(f"    [STATUS:SUCCESS]  TOOLS LOADED.")
 
-    return nlp, client, embedder, collection
+    return nlp, embedder, collection
 
 # --------------------------------------------------
 # DOCUMENT INGESTION
@@ -86,6 +86,12 @@ def is_file_valid(file_path: str) -> tuple[bool, str]:
     doc.close()
     return True,  f"{file_path} is a valid .pdf file."
 
+def is_already_ingested(filename: str, collection) -> bool:
+    """Checks if a file has already been ingested."""
+    # collection.get() method filters by metadata
+    result = collection.get(where={"filename":filename}, limit = 1)
+    return len(result["ids"]) > 0
+
 # --------------------------------------------------
 # 2. Extract text per page and clean it
 # --------------------------------------------------
@@ -114,12 +120,11 @@ def clean_text(text: str) -> str:
 def extract_pages(file_path: str) -> list[dict]:
     """Returns  a list of {page_num: text} for every page in file.
     Flags pages with suspiciously little text which were likely scanned and not digital."""
-    # NOTE: redundant from is_file_valid()
-    # try:
-    #     doc = fitz.open(file_path)
-    # except Exception as e:
-    #     print(f"Error occurred while opening {file_path}: {e}")
-    #     return []
+    try:
+        doc = fitz.open(file_path)
+    except Exception as e:
+        print(f"Error occurred while opening {file_path}: {e}")
+        return []
     
     pages = []
     for page_num, page in enumerate(doc, start = 1):
@@ -132,20 +137,16 @@ def extract_pages(file_path: str) -> list[dict]:
 
     doc.close()
 
-    print(f"    [STATUS:SUCCESS]  DATA_EXTRACTION:'{Path(file_path).name}'.")
+    print(f"    [STATUS:SUCCESS]  DATA EXTRACTED:'{Path(file_path).name}'.")
     return pages
 
 # --------------------------------------------------
 # 3. Chunk text and attach metadata
 # --------------------------------------------------
 
-def chunk_text(pages: list[dict], file_path: str) -> list[dict]:
+def chunk_text(pages: list[dict], filename: str) -> list[dict]:
     """Chunks each page into overlapping-based chunks.
     Each chunk stores its respective metadata (filename, page, chunk_id)"""
-
-    filename = Path(file_path).name
-
-    print(f"Chunking {filename} staring now.")
 
     chunks = []
     chunk_id = 0
@@ -177,7 +178,7 @@ def chunk_text(pages: list[dict], file_path: str) -> list[dict]:
 
                 chunk_id +=1 
 
-    print(f"    [STATUS:SUCCESS]  DATA_CHUNKING:'{filename}'.")
+    print(f"    [STATUS:SUCCESS]  DATA CHUNKED.")
     return chunks
 
 # --------------------------------------------------
@@ -198,7 +199,7 @@ def extract_entities(text: str, nlp) -> str:
         # print(f"Entity: {entity:<12} | Label: {label:<12} | Explanation: {spacy.explain(label)}")
         ner.append(f"{entity} {label}")
     
-    print(f"    [STATUS:SUCCESS]  ENTITY_EXTRACTION.")
+    # print(f"    [STATUS:SUCCESS]  ENTITY EXTRACTED.")
     return ", ".join(ner) if ner else ""
 
 # --------------------------------------------------
@@ -220,10 +221,10 @@ def embed_and_store(chunks: list[dict], nlp, embedder, collection) -> None:
         embeddings = embedder.encode(texts).tolist()
     except Exception as e:
         print(f"ERROR occurred: {e}")
-        print(f"    [STATUS:FAILED]  VECTOR_EMBEDDING.")
+        print(f"    [STATUS:FAILED]  VECTOR NOT EMBEDDED.")
         return
     
-    print(f"    [STATUS:SUCCESS]  VECTOR_EMBEDDING.")
+    print(f"    [STATUS:SUCCESS]  VECTOR EMBEDDED.")
 
     metadatas = []
 
@@ -238,28 +239,89 @@ def embed_and_store(chunks: list[dict], nlp, embedder, collection) -> None:
     try:
         collection.add(    
             ids = ids,                  # required (list[str])
-            documents = texts,          # optional (list[str])
             embeddings = embeddings,    # optional (list[list[float]])
+            documents = texts,          # optional (list[str])
             metadatas = metadatas       # optional (list[dict])
         )
 
     except Exception as e:
         print(f"ERROR occurred: {e}")
-        print(f"    [STATUS:FAILED]  VECTOR_STORAGE.")
+        print(f"    [STATUS:FAILED]  VECTOR NOT STORED.")
         return
 
-    print(f"    [STATUS:SUCCESS]  VECTOR_STORAGE.")
+    print(f"    [STATUS:SUCCESS]  VECTOR STORED.")
 
 
 # --------------------------------------------------
-# 7. Ingestion pipeline
+# 6. Ingestion pipeline
 # --------------------------------------------------
+
+def ingest(file_path: str, nlp, embedder, collection) -> dict:
+    """Runs the full ingestion pipeline for one PDF.
+    Returns a summary used in the final report."""  
+    
+    filename = Path(file_path).name
+    valid, reason = is_file_valid(file_path=file_path)
+    
+    if not valid:
+        print(f"{filename} skipped: {reason}")
+        return {"filename": filename, "status": "skipped", "reason": reason, "chunks": 0}
+    
+    if is_already_ingested(filename, collection):
+        print(f"{filename} skipped: File already ingested.")
+        return {"filename": filename, "status": "skipped", "reason": "File already ingested.", "chunks": 0}
+
+    pages = extract_pages(file_path=file_path)
+    chunk_list = chunk_text(pages=pages, filename=filename)
+    embed_and_store(chunks=chunk_list, nlp=nlp, embedder=embedder, collection=collection)
+    
+    return {"filename": filename, "status": "ingested", "reason": "", "chunks": len(chunk_list)}
+
+# --------------------------------------------------
+# 7. Main function
+# --------------------------------------------------
+
+def main() -> None:
+    """Runs the ingestion pipeline on all files once and stores embedding in db."""
+    nlp, embedder, collection = load_tools()
+
+    sources = extract_uploads(config.PDF_FOLDER)
+
+    if not sources:
+        print(f"No source was found under {config.PDF_FOLDER}")
+        return
+    
+    print(f"Sources uploaded: {sources}")
+
+    ingested = []
+    skipped = []
+    new_chunks = 0
+    for source in sources:
+        result = ingest(source, nlp, embedder, collection)
+        if result["status"] == "ingested":
+            ingested.append(result)
+            new_chunks += result["chunks"]
+        else:
+            skipped.append(result)
+
+        
+    # summary report
+    print("=" * 50)
+    print("INGESTION SUMMARY")
+    print("=" * 50)
+    print(f"PDFs found: {len(sources)}")
+    print(f"Ingested: {len(ingested)}")
+    print(f"Skipped: {len(skipped)}")
+    print(f"New Chunks: {new_chunks}")
+    print(f"Collection size: {collection.count()} chunks in ChromaDB.")
+
+
+if __name__ == "__main__":
+    main()
 
 
 
-# --------------------------------------------------
-# 7. Ingestion pipeline
-# --------------------------------------------------
+
 
 # --------------------------------------------------
 # SMOKE TESTS
@@ -281,19 +343,23 @@ def embed_and_store(chunks: list[dict], nlp, embedder, collection) -> None:
 # smoke test 4: named entity recognition
 # --------------------------------------------------
 # NOTE: to run, uncomment the tokenization
-test_sentence = "Apple is looking at buying U.K. startups for $1 billion. Employees loved working there."
+# test_sentence = "Apple is looking at buying U.K. startups for $1 billion. Employees loved working there."
 # print(extract_entities(text=test_sentence))
 
 # --------------------------------------------------
-# smoke test 4: embeddings and storing
+# smoke test 4-6: embeddings and storing
 # --------------------------------------------------
-nlp, client, embedder, collection = load_tools()
+# nlp, client, embedder, collection = load_tools()
 
-test_chunk = [{
-    "text": test_sentence,
-    "filename": "Test-file",
-    "page_num": 1,
-    "chunk_id": "Test-file_0"
-}]
+# test_chunk = [{
+#     "text": test_sentence,
+#     "filename": "Test-file",
+#     "page_num": 1,
+#     "chunk_id": "Test-file_0"
+# }]
 
-embed_and_store(test_chunk, nlp, embedder, collection)
+# ingest(my_sources[0], nlp, embedder, collection)
+
+# collections = client.list_collections() # returns up to 100 collections
+
+
