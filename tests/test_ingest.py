@@ -1,14 +1,13 @@
 # Unit test of functions in ingest.py
 
-import shutil
 import unittest
 import os
 import tempfile
 from sentence_transformers import SentenceTransformer
 import spacy
 import chromadb
-
 import config
+
 from ingest import embed_and_store, extract_entities, extract_uploads, is_file_valid, clean_text, chunk_text
 
 # --------------------------------------------------
@@ -194,7 +193,7 @@ class ModelTestCase(unittest.TestCase):
         cls.embedder = SentenceTransformer("all-MiniLM-L6-v2")
 
         cls.client = chromadb.EphemeralClient()
-        cls.collection = cls.client.get_or_create_collection("test_collection")
+        cls.collection = cls.client.get_or_create_collection(config.E_DB_PATH)
 
 # --------------------------------------------------
 # 4. spaCy named entity extraction per chunk
