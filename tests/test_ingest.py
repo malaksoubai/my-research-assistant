@@ -1,10 +1,15 @@
 # Unit test of functions in ingest.py
 
+import shutil
 import unittest
 import os
 import tempfile
+from sentence_transformers import SentenceTransformer
+import spacy
+import chromadb
 
-from ingest import extract_uploads, is_file_valid, clean_text, extract_pages, chunk_text
+import config
+from ingest import embed_and_store, extract_entities, extract_uploads, is_file_valid, clean_text, chunk_text
 
 # --------------------------------------------------
 # 1. Read all PDFs from a folder and validate them
@@ -170,6 +175,86 @@ class TestChunkTest(unittest.TestCase):
         self.assertEqual(result, [])
 
 
+# ──────────────────────────────────────────────
+# Claude Code:
+# Shared fixture: load models once for all model-dependent tests
+# Runs once per test session, not once per test — keeps things fast
+# ──────────────────────────────────────────────
+
+class ModelTestCase(unittest.TestCase):
+    """Base class that loads models once and shares them across subclasses.
+    Any test class that needs real models should inherit from this."""
+
+    @classmethod
+    def setUpClass(cls):
+        """Loads spaCy, Sentence Transformers, and a temporary ChromaDB
+        collection once before any test in this class runs."""
+        print("\nLoading models for integration tests (one-time cost)...")
+        cls.nlp = spacy.load("en_core_web_sm")
+        cls.embedder = SentenceTransformer("all-MiniLM-L6-v2")
+
+        cls.client = chromadb.EphemeralClient()
+        cls.collection = cls.client.get_or_create_collection("test_collection")
+
+# --------------------------------------------------
+# 4. spaCy named entity extraction per chunk
+# --------------------------------------------------
+
+class TestExtractEntities(ModelTestCase):
+
+    def test_empty_input(self):
+        """Empty strings should yield an empty string."""
+        result = extract_entities(text=" ", nlp=self.nlp)
+        self.assertEqual(result, "")
+
+    def test_extract_organization_entity(self):
+        """spaCy should identify known organization."""
+        result = extract_entities("Google is an organization.", self.nlp)
+        self.assertIn("Google", result)
+
+    def test_extract_date_entity(self):
+        """spaCy should identify known date."""
+        result = extract_entities("I started this project on June 2026.", self.nlp)
+        self.assertIn("June", result)
+
+    def test_extract_person_entity(self):
+        """spaCy should identify known person."""
+        result = extract_entities("Mohammed IV is the King of Morocco.", self.nlp)
+        self.assertIn("Mohammed", result)
+
+    def test_extract_place_entity(self):
+        """spaCy should identify known place."""
+        result = extract_entities("London is the capital city of England.", self.nlp)
+        self.assertIn("London", result)
+
+# --------------------------------------------------
+# 5. vectorize chunks and store in chromaDB
+# --------------------------------------------------
+
+class TestEmbedAndStore(ModelTestCase):
+
+    def make_chunk(self, num: int) -> list[dict]:
+        """Helper function: Creates num number of chunks in a list."""
+        result = []
+        for n in range(num):
+            result.append({
+                "text": "This is a test chunk containing data.",
+                "filename": "Test-Chunk",
+                "page_num": 1,
+                "chunk_id": f"Test-Chunk_{n}"
+            })
+        return result
+
+    def test_empty_chunk(self):
+        """Empty chunk should yield to nothing stored in the db."""
+        embed_and_store([], self.nlp, self.embedder, self.collection)
+        self.assertEquals(self.collection.count(), 0)
+
+    def test_two_chunks(self):
+        """Two chunk should yield to two stored in the db."""
+        chunks = self.make_chunk(2)
+        embed_and_store(chunks, self.nlp, self.embedder, self.collection)
+        self.assertEquals(self.collection.count(), 2)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
