@@ -39,8 +39,17 @@ def load_tools():
         # vectorization (list of nums) for embeddings, rows in table 
         embedder = SentenceTransformer(config.EMBEDDING_MODEL)
 
-        # the table 
-        collection = client.get_or_create_collection(name=config.COLLECTION_NAME)
+        # table 
+        # NOTE: comment out lines 45-46 iif:
+        # You need to wipe all entries of the collection
+        # client.delete_collection(config.COLLECTION_NAME)
+        # print("Vector database wiped and recreated.")
+
+        collection = client.get_or_create_collection(
+            name=config.COLLECTION_NAME,
+            metadata = {"hnsw:space": "cosine"},    # Hierarchical Navigable Small World index
+        )
+        
     except Exception as e:
         print(f"    [STATUS:FAILED]  TOOLS NOT LOADED.")
         print(f"ERROR occurred: {e}")
@@ -210,7 +219,6 @@ def extract_entities(text: str, nlp) -> str:
 
 def embed_and_store(chunks: list[dict], nlp, embedder, collection) -> None:
     """Vectorize chunks and store them in chromaDB."""
-    
     if not chunks:
         return
 
@@ -306,9 +314,9 @@ def main() -> None:
 
         
     # summary report
-    print("=" * 50)
+    print("-" * 50)
     print("INGESTION SUMMARY")
-    print("=" * 50)
+    print("-" * 50)
     print(f"PDFs found: {len(sources)}")
     print(f"Ingested: {len(ingested)}")
     print(f"Skipped: {len(skipped)}")
@@ -320,46 +328,11 @@ if __name__ == "__main__":
     main()
 
 
-
-
-
 # --------------------------------------------------
 # SMOKE TESTS
 # --------------------------------------------------
-# smoke test 1-3: text extraction and chunking
-# --------------------------------------------------
-# my_sources = extract_uploads(config.PDF_FOLDER)
-# print(my_sources)
+# Add smoke test for sanity checks here
 
-# for source in my_sources:
-#     if is_file_valid(source)[0]:
-#         extracted_pages = extract_pages(file_path=source)
-#         # print(extracted_pages)
-#         chunk_text(extracted_pages, source)
-
-# print("D    O   N   E")
-
-# --------------------------------------------------
-# smoke test 4: named entity recognition
-# --------------------------------------------------
-# NOTE: to run, uncomment the tokenization
-# test_sentence = "Apple is looking at buying U.K. startups for $1 billion. Employees loved working there."
-# print(extract_entities(text=test_sentence))
-
-# --------------------------------------------------
-# smoke test 4-6: embeddings and storing
-# --------------------------------------------------
-# nlp, client, embedder, collection = load_tools()
-
-# test_chunk = [{
-#     "text": test_sentence,
-#     "filename": "Test-file",
-#     "page_num": 1,
-#     "chunk_id": "Test-file_0"
-# }]
-
-# ingest(my_sources[0], nlp, embedder, collection)
-
-# collections = client.list_collections() # returns up to 100 collections
+# client.list_collections() returns up to 100 collections
 
 
