@@ -193,7 +193,7 @@ class ModelTestCase(unittest.TestCase):
         cls.embedder = SentenceTransformer("all-MiniLM-L6-v2")
 
         cls.client = chromadb.EphemeralClient()
-        cls.collection = cls.client.get_or_create_collection(config.E_DB_PATH)
+        cls.collection = cls.client.get_or_create_collection(name = "test_data", metadata={"hnsw:space": "cosine"})
 
 # --------------------------------------------------
 # 4. spaCy named entity extraction per chunk
