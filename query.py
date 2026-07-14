@@ -25,17 +25,17 @@ def embed_query(input: str, embedder) -> list[float]:
     return embedded_query.tolist()
 
 
-def similarity_search(k: int, embedded_query: list[float], collection) ->  list[dict]:
+def similarity_search(k: int, embedded_query: list[float], collection) -> None | list[dict]:
     """Performs top-k similarity search.
     Prints similarity score of top-k results."""
 
-    if len(embedded_query) == 0:
-        print(f"    [STATUS:ERROR]  K is not an acceptable value of range [1, 5].")
-        return []
-    
     if k < 1 or k > 5:
         print(f"    [STATUS:ERROR]  K is not an acceptable value of range [1, 5].")
-        return []
+        return None
+
+    if embedded_query is None or len(embedded_query) == 0:
+        print(f"    [STATUS:ERROR]  K is not an acceptable value of range [1, 5].")
+        return None
     
     # results is a dict with "" keys and [[]] values
     results = collection.query(
