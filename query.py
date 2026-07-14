@@ -67,16 +67,43 @@ def similarity_search(k: int, embedded_query: list[float], collection) -> None |
     
     return results
 
+# --------------------------------------------------
+# MAIN FUNCTION
+# --------------------------------------------------
 
-# SMOKE TEST
-if __name__ == "__main__":
-    print("started SMOKE TESTING query.py file")
+def main() -> None:
+    """Runs the query pipeline to retrieve top-k similar chunks."""
     nlp, embedder, collection = load_tools()
-    queries = [
-        "What ingredients are needed for a chocolate cake recipe?"
-    ]
-    for query in queries:
-        print(f"\n\nQuery: {query}\n")
-        embedded_query = embed_query(query, embedder=embedder)
-        output = similarity_search(2, embedded_query=embedded_query, collection=collection)
+
+    print("Your Research Assistant is read. Type 'STOP' to exit.\n")
+
+    while True:
+        query = input("Ask a question: ")
+
+        if query.lower() in ('stop', 'quit', 'exit'):
+            print("You've exited the program.")
+            break
+
+        embedded_query = embed_query(query)
+        relevant_embeds = similarity_search(k=3, embedded_query=embedded_query, collection=collection)
+
+        # TODO: wire in LlamaIndex and print result
+
+
+
+# --------------------------------------------------
+# SMOKE TESTS
+# --------------------------------------------------
+# Add smoke test for sanity checks here
+
+# if __name__ == "__main__":
+#     print("started SMOKE TESTING query.py file")
+#     nlp, embedder, collection = load_tools()
+#     queries = [
+#         "What ingredients are needed for a chocolate cake recipe?"
+#     ]
+#     for query in queries:
+#         print(f"\n\nQuery: {query}\n")
+#         embedded_query = embed_query(query, embedder=embedder)
+#         output = similarity_search(2, embedded_query=embedded_query, collection=collection)
 
