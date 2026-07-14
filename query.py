@@ -10,7 +10,7 @@ from ingest import load_tools
 def embed_query(input: str, embedder) -> list[float]:
     """Embed the query."""
     # no input, or invalid input
-    if not input:
+    if len(input) == 0:
         raise ValueError("Input Error: No query was found.")
     
     try:
@@ -31,11 +31,11 @@ def similarity_search(k: int, embedded_query: list[float], collection) ->  list[
 
     if len(embedded_query) == 0:
         print(f"    [STATUS:ERROR]  K is not an acceptable value of range [1, 5].")
-        return
+        return []
     
     if k < 1 or k > 5:
         print(f"    [STATUS:ERROR]  K is not an acceptable value of range [1, 5].")
-        return
+        return []
     
     # results is a dict with "" keys and [[]] values
     results = collection.query(
