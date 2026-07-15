@@ -7,8 +7,24 @@ import config
 from ingest import load_tools
 
 import time
+import os
+from dotenv import load_file, load_dotenv
 from llama_index.llms.ollama import Ollama
+from llama_index.llms.groq import Groq
 
+# --------------------------------------------------
+# 0. Load API Key
+# --------------------------------------------------
+
+# Load the .env file into the system environment
+load_dotenv()
+
+# Extract the key and assign it to a Python variable
+API_KEY = os.getenv("GROQ_API_KEY")
+
+# Optional safeguard to catch missing keys early
+if not API_KEY:
+    raise ValueError("Error: GROQ_API_KEY is not set in the .env file!")
 
 # --------------------------------------------------
 # 1. Query embedding
@@ -59,7 +75,7 @@ def similarity_search(k: int, input: str, embedder, collection) -> None | dict[s
 
     distances = results["distances"][0]
     metadatas = results["metadatas"][0]
-    documents = results["documents"][0]
+    # documents = results["documents"][0]
 
     print(f"    [STATUS:SUCCESS]  CHUNKS RETRIEVED.")
 
@@ -77,11 +93,11 @@ def similarity_search(k: int, input: str, embedder, collection) -> None | dict[s
         print(f"{(i + 1):<5} {filename:<40} {page:<5} {d:<10} {s}")
         
     
-    print(f"Texts used: {documents}\n")
+    # print(f"Texts used: {documents}\n")
     
     return results
 
-def retrieve_relevant_results(results: dict[str, list], threshold: float = 0.4) -> None | dict[str, list]:
+def retrieve_relevant_results(results: dict[str, list], threshold: float = 0.32) -> None | dict[str, list]:
     """Helper function used to validate output results by checking relevancy."""
     if results is None:
         return None
@@ -114,9 +130,12 @@ You are a research assistant. Answer the question using only the sources below.
 
 Your rules:
 - Your answers are exclusively sourced from the data shared below.
-- After every claim, support it using the following citation: (Source: <filename>, p. <page>)
-- If the data shared with you does not answer the query, ONLY output: 'I could not find this in the uploaded documents.'
+- At the end of every answer you provide, support it using the following citation: (Source: <filename>, p. <page>)
+- If none of the data shared with you directly answer the query, output raw text: 'I could not find this in the uploaded documents.'
 - Return Raw output with no additional comment or assumption.
+- Raw output example: 
+'<Your answer>' [filename, page number]. \n
+'<Your answer>' [filename, page number].
 """
 
 def build_prompt(query: str, relevant_results: None | dict[str, list], sys_prompt: str = SYSTEM_PROMPT) -> str:
@@ -125,8 +144,8 @@ def build_prompt(query: str, relevant_results: None | dict[str, list], sys_promp
     for i, (doc, meta) in enumerate(zip(relevant_results["documents"], relevant_results["metadatas"]), start = 1):
         source = (
             f"--- source {i} ---\n"
-            f"--- filename: {meta["filename"]} ---\n"
-            f"--- page: {meta["page"]} ---\n"
+            f"--- filename: {meta['filename']} ---\n"
+            f"--- page: {meta['page']} ---\n"
             f"--- content: {doc} ---\n"
         )
         
@@ -145,7 +164,12 @@ def generate_answer(query: str, relevant_results: dict[str, list]) -> str:
     """Wire LlamaIndex to generate answer from Ollama."""
     print("=" * 75)
     prompt = build_prompt(query, relevant_results)
-    llm = Ollama(model=config.LLM_MODEL, request_timeout=120.0)
+
+    # When using Ollama:
+    # llm = Ollama(model=config.LLM_MODEL, request_timeout=120.0)
+    # When using Groq:
+    llm = Groq(model=config.LLM_MODEL, api_key=API_KEY)
+
 
     print(f"    [STATUS:STARTED]  SYSTEM LOADING AN ANSWER.")
     print('Awaiting answer from ollama. Please wait, this may take some time...')
@@ -177,7 +201,7 @@ def main() -> None:
             break
 
         elif query:
-            top_k = similarity_search(k=3, input=query, embedder=embedder, collection=collection)
+            top_k = similarity_search(k=4, input=query, embedder=embedder, collection=collection)
             relevant_results = retrieve_relevant_results(results=top_k)
 
             if relevant_results == {}:

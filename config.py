@@ -21,4 +21,7 @@ COLLECTION_NAME = "research_papers"
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 
 # Ollama Model
-LLM_MODEL = "llama3.2:1b"
+# LLM_MODEL = "llama3.2:1b"
+
+# Groq 
+LLM_MODEL = "llama3-70b-8192"
