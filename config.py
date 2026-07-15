@@ -19,3 +19,6 @@ COLLECTION_NAME = "research_papers"
 
 # Sentence Transformer
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"
+
+# Ollama Model
+LLM_MODEL = "llama3.2:1b"
