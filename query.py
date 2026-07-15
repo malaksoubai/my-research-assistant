@@ -7,8 +7,8 @@ import config
 
 from ingest import load_tools
 
-def embed_query(input: str, embedder) -> list[float]:
-    """Embed the query."""
+def embed_query(input: str, embedder) -> list[float] | None:
+    """Helper function to embed a query using a unimodal embedder."""
     # no input, or invalid input
     if len(input) == 0:
         raise ValueError("Input Error: No query was found.")
@@ -25,13 +25,15 @@ def embed_query(input: str, embedder) -> list[float]:
     return embedded_query.tolist()
 
 
-def similarity_search(k: int, embedded_query: list[float], collection) -> None | list[dict]:
+def similarity_search(k: int, input: str, embedder, collection) -> None | list[dict]:
     """Performs top-k similarity search.
     Prints similarity score of top-k results."""
 
     if k < 1 or k > 5:
         print(f"    [STATUS:ERROR]  K is not an acceptable value of range [1, 5].")
         return None
+    
+    embedded_query = embed_query(input, embedder)
 
     if embedded_query is None or len(embedded_query) == 0:
         print(f"    [STATUS:ERROR]  K is not an acceptable value of range [1, 5].")
@@ -62,10 +64,14 @@ def similarity_search(k: int, embedded_query: list[float], collection) -> None |
         filename = metadatas[i]["filename"]
         page = metadatas[i]["page"]
         print(f"{(i + 1):<5} {filename:<30} {page:<5} {d:<10} {s}")
+        
     
     print(f"Texts used: {documents}\n")
     
     return results
+
+
+# TODO: def generate_answer()
 
 # --------------------------------------------------
 # MAIN FUNCTION
@@ -84,8 +90,7 @@ def main() -> None:
             print("You've exited the program.")
             break
 
-        embedded_query = embed_query(query)
-        relevant_embeds = similarity_search(k=3, embedded_query=embedded_query, collection=collection)
+        relevant_embeds = similarity_search(k=3, input=query, embedder=embedder, collection=collection)
 
         # TODO: wire in LlamaIndex and print result
 
@@ -102,8 +107,9 @@ def main() -> None:
 #     queries = [
 #         "What ingredients are needed for a chocolate cake recipe?"
 #     ]
+
 #     for query in queries:
 #         print(f"\n\nQuery: {query}\n")
-#         embedded_query = embed_query(query, embedder=embedder)
-#         output = similarity_search(2, embedded_query=embedded_query, collection=collection)
+#         output = similarity_search(k=2, input=query, embedder=embedder, collection=collection)
+
 
