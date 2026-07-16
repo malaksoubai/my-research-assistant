@@ -24,4 +24,12 @@ EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 # LLM_MODEL = "llama3.2:1b"
 
 # Groq 
-LLM_MODEL = "llama3-70b-8192"
+import os
+from dotenv import load_dotenv
+
+load_dotenv() # Load .env file
+API_KEY = os.getenv("GROQ_API_KEY")
+if not API_KEY: # Optional safeguard to catch missing keys early
+    raise ValueError("Error: GROQ_API_KEY is not set in the .env file!")
+
+LLM_MODEL = "llama-3.3-70b-versatile"
