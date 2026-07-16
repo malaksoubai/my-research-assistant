@@ -7,24 +7,6 @@ import config
 from ingest import load_tools
 
 import time
-import os
-from dotenv import load_file, load_dotenv
-from llama_index.llms.ollama import Ollama
-from llama_index.llms.groq import Groq
-
-# --------------------------------------------------
-# 0. Load API Key
-# --------------------------------------------------
-
-# Load the .env file into the system environment
-load_dotenv()
-
-# Extract the key and assign it to a Python variable
-API_KEY = os.getenv("GROQ_API_KEY")
-
-# Optional safeguard to catch missing keys early
-if not API_KEY:
-    raise ValueError("Error: GROQ_API_KEY is not set in the .env file!")
 
 # --------------------------------------------------
 # 1. Query embedding
@@ -97,7 +79,7 @@ def similarity_search(k: int, input: str, embedder, collection) -> None | dict[s
     
     return results
 
-def retrieve_relevant_results(results: dict[str, list], threshold: float = 0.32) -> None | dict[str, list]:
+def retrieve_relevant_results(results: dict[str, list], threshold: float = 0.3) -> None | dict[str, list]:
     """Helper function used to validate output results by checking relevancy."""
     if results is None:
         return None
@@ -160,22 +142,15 @@ def build_prompt(query: str, relevant_results: None | dict[str, list], sys_promp
 
     return prompt
 
-def generate_answer(query: str, relevant_results: dict[str, list]) -> str:
+def generate_answer(query: str, relevant_results: dict[str, list], llm) -> str:
     """Wire LlamaIndex to generate answer from Ollama."""
     print("=" * 75)
     prompt = build_prompt(query, relevant_results)
 
-    # When using Ollama:
-    # llm = Ollama(model=config.LLM_MODEL, request_timeout=120.0)
-    # When using Groq:
-    llm = Groq(model=config.LLM_MODEL, api_key=API_KEY)
-
-
-    print(f"    [STATUS:STARTED]  SYSTEM LOADING AN ANSWER.")
-    print('Awaiting answer from ollama. Please wait, this may take some time...')
+    print(f"    [STATUS:STARTED]  SYSTEM LOADING AN ANSWER...")
+    # print('Awaiting answer. Please wait, this may take some time...')
     start = time.time()
 
-    # Sets the timeout to 120 seconds instead of the default 30 seconds
     response = llm.complete(prompt)
     print(f"Completed in {time.time()-start:.2f}s")
 
@@ -188,7 +163,7 @@ def generate_answer(query: str, relevant_results: dict[str, list]) -> str:
 
 def main() -> None:
     """Runs the query pipeline to retrieve top-k similar chunks."""
-    nlp, embedder, collection = load_tools()
+    nlp, embedder, collection, llm = load_tools()
 
     print("Your Research Assistant is read.\n")
 
@@ -206,9 +181,10 @@ def main() -> None:
 
             if relevant_results == {}:
                 print('\nI could not find this in the uploaded documents.\n')
+                print('Please remember to be always be specific. The system does not keep track of message history.')
 
             else:
-                response = generate_answer(query, relevant_results)
+                response = generate_answer(query, relevant_results, llm)
                 print(str(response))
 
 

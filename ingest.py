@@ -10,15 +10,16 @@
 
 
 import config
-
 import os
+
 from pathlib import Path
 import re
 import fitz     # PyMuPDF
 import spacy
 import chromadb
 from sentence_transformers import SentenceTransformer
-
+from llama_index.llms.ollama import Ollama
+from llama_index.llms.groq import Groq
 
 # --------------------------------------------------
 # SETUP
@@ -40,8 +41,7 @@ def load_tools():
         embedder = SentenceTransformer(config.EMBEDDING_MODEL)
 
         # table 
-        # NOTE: comment out lines 45-46 iif:
-        # You need to wipe all entries of the collection
+        # NOTE: use following two lines only to wipe all entries of the collection
         # client.delete_collection(config.COLLECTION_NAME)
         # print("Vector database wiped and recreated.")
 
@@ -49,6 +49,11 @@ def load_tools():
             name=config.COLLECTION_NAME,
             metadata = {"hnsw:space": "cosine"},    # Hierarchical Navigable Small World index
         )
+
+        # When using Ollama:
+        # llm = Ollama(model=config.LLM_MODEL, request_timeout=120.0)
+        # When using Groq:
+        llm = Groq(model=config.LLM_MODEL, api_key=config.API_KEY)
         
     except Exception as e:
         print(f"    [STATUS:FAILED]  TOOLS NOT LOADED.")
@@ -291,7 +296,7 @@ def ingest(file_path: str, nlp, embedder, collection) -> dict:
 
 def main() -> None:
     """Runs the ingestion pipeline on all files once and stores embedding in db."""
-    nlp, embedder, collection = load_tools()
+    nlp, embedder, collection, llm = load_tools()
 
     sources = extract_uploads(config.PDF_FOLDER)
 
