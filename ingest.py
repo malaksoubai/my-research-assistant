@@ -62,7 +62,7 @@ def load_tools():
 
     print(f"    [STATUS:SUCCESS]  TOOLS LOADED.")
 
-    return nlp, embedder, collection
+    return nlp, embedder, collection, llm
 
 # --------------------------------------------------
 # DOCUMENT INGESTION
