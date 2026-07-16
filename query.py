@@ -37,9 +37,8 @@ def similarity_search(k: int, input: str, embedder, collection) -> None | dict[s
     """Performs top-k similarity search.
     Prints similarity score of top-k results."""
 
-    if k < 1 or k > 5:
-        print(f"    [STATUS:ERROR]  K is not an acceptable value of range [1, 5].")
-        # FIXME: instead of printing None, should I raise an error?
+    if k < 1 or k > 10:
+        print(f"    [STATUS:ERROR]  K acceptable range [1, 5], got {k}.")
         return None
     
     embedded_query = embed_query(input, embedder)
@@ -179,7 +178,7 @@ def main() -> None:
             top_k = similarity_search(k=4, input=query, embedder=embedder, collection=collection)
             relevant_results = retrieve_relevant_results(results=top_k)
 
-            if relevant_results == {}:
+            if not relevant_results: # true for None or empty {}
                 print('\nI could not find this in the uploaded documents.\n')
                 print('Please remember to be always be specific. The system does not keep track of message history.')
 
