@@ -1,7 +1,7 @@
 # Unit test of functions in query.py
 
 import unittest 
-from query import embed_query, similarity_search
+from query import embed_query, similarity_search, retrieve_relevant_results
 from tests.test_ingest import ModelTestCase
 
 class TestEmbedQuery(ModelTestCase):
@@ -25,8 +25,7 @@ class TestSimilaritySearch(ModelTestCase):
     def setUp(self):
         """Populate collection with a few chunks before each test."""
         # clear first to avoid duplicate ID errors across tests
-        self.collection.delete(ids=self.collection.get()["ids"]) \
-            if self.collection.count() > 0 else None
+        self.collection.delete(ids=self.collection.get()["ids"]) if self.collection.count() > 0 else None
 
         fake_chunks = [
             {
@@ -52,25 +51,43 @@ class TestSimilaritySearch(ModelTestCase):
         from ingest import embed_and_store
         embed_and_store(fake_chunks, self.nlp, self.embedder, self.collection)
 
-    def test_no_embedded_query(self):
-        """Lack of embedded query should result in an empty output."""
-        result = similarity_search(1, [], self.collection)
-        self.assertIsNone(result)
-
     def test_invalid_k(self):
         """An invalid value of k should result in an empty output."""
-        result = similarity_search(0, [0.22, 0.22, 0.22], self.collection)
+        result = similarity_search(0, "Hello, world!", self.embedder, self.collection)
         self.assertIsNone(result)
 
     def test_valid_inputs(self):
         """Result should contain distances, metadatas, and documents."""
         query = "Is attention mechanism used in transformer models?"
-        embedded_query = embed_query(query, self.embedder)
-        result = similarity_search(1, embedded_query, self.collection)
+        result = similarity_search(1, query, self.embedder, self.collection)
         
         self.assertIn("distances", result)
         self.assertIn("metadatas", result)
         self.assertIn("documents", result)
+
+class TestRetrieveRelevantResults(unittest.TestCase):
+    
+    def test_no_results_arg(self):
+        """Lack of results argument should yield to no output."""
+        output = retrieve_relevant_results(None)
+        self.assertIsNone(output)
+    
+    def test_revant_result(self):
+        """Results should be over default threshold of 0.3 and contain two keys."""
+        results = {
+            "distances": [[0.1, 0.8, 0.7]],
+            "documents": [["valid_doc_1", "non_valid_doc", "valid_doc_2"]],
+            "metadatas": [[1, 2, 3]]
+        }
+        result = retrieve_relevant_results(results)
+
+        self.assertNotIn("distances", result)
+        self.assertIn("metadatas", result)
+        self.assertIn("documents", result)
+
+        self.assertNotIn("non_valid_doc", result["documents"])
+        self.assertIn("valid_doc_1", result["documents"])
+        self.assertIn("valid_doc_2", result["documents"])
 
 
 if __name__ == '__main__':
