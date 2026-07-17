@@ -44,7 +44,6 @@ def similarity_search(k: int, input: str, embedder, collection) -> None | dict[s
     embedded_query = embed_query(input, embedder)
 
     if embedded_query is None or len(embedded_query) == 0:
-        print(f"    [STATUS:ERROR]  K is not an acceptable value of range [1, 5].")
         return None
     
     # results is a dict with "" keys and [[]] values
