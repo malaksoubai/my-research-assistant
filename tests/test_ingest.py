@@ -6,7 +6,6 @@ import tempfile
 from sentence_transformers import SentenceTransformer
 import spacy
 import chromadb
-import config
 
 from ingest import embed_and_store, extract_entities, extract_uploads, is_file_valid, clean_text, chunk_text
 
