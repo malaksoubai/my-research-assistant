@@ -33,7 +33,7 @@ def embed_query(input: str, embedder) -> list[float] | None:
 # 2. Similarity Search - top-k chunks + similarity score
 # --------------------------------------------------
 
-def similarity_search(k: int, input: str, embedder, collection) -> None | dict[str, list]:
+def similarity_search(k: int, input: str, embedder, collection, show_stat: bool = True) -> None | dict[str, list]:
     """Performs top-k similarity search.
     Prints similarity score of top-k results."""
 
@@ -59,18 +59,19 @@ def similarity_search(k: int, input: str, embedder, collection) -> None | dict[s
 
     print(f"    [STATUS:SUCCESS]  CHUNKS RETRIEVED.")
 
-    print("-" * 75)
-    print("SIMILARITY SEARCH RESULTS")
-    print("-" * 75)
-    print(f'{"#":<5} {"Filename":<40} {"Page":<5} {"Distance":<10} {"Similarity"}')
-    print("-" * 75)
+    if show_stat:
+        print("-" * 75)
+        print("SIMILARITY SEARCH RESULTS")
+        print("-" * 75)
+        print(f'{"#":<5} {"Filename":<40} {"Page":<5} {"Distance":<10} {"Similarity"}')
+        print("-" * 75)
 
     for i in range(len(distances)):
         d = round(distances[i], 4) # rounding only distance would yield to 0 or 1
         s = round(1 - d, 4)
         filename = metadatas[i]["filename"]
         page = metadatas[i]["page"]
-        print(f"{(i + 1):<5} {filename:<40} {page:<5} {d:<10} {s}")
+        if show_stat: print(f"{(i + 1):<5} {filename:<40} {page:<5} {d:<10} {s}")
         
     
     # print(f"Texts used: {documents}\n")
@@ -165,6 +166,8 @@ def main() -> None:
 
     print("Your Research Assistant is read.\n")
 
+    show_stat = input("Show retrieval similarity score and distance? (Y/N): ")
+
     while True:
         print("-" * 75)
         query = input("Ask a question or type 'STOP' to exit: ")
@@ -174,7 +177,11 @@ def main() -> None:
             break
 
         elif query:
-            top_k = similarity_search(k=4, input=query, embedder=embedder, collection=collection)
+            if show_stat.lower() in ['n', 'no']:
+                top_k = similarity_search(k=4, input=query, embedder=embedder, collection=collection, show_stat=False)
+
+            else: 
+                top_k = similarity_search(k=4, input=query, embedder=embedder, collection=collection)
             relevant_results = retrieve_relevant_results(results=top_k)
 
             if not relevant_results: # true for None or empty {}
