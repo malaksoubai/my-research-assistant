@@ -78,7 +78,7 @@ def similarity_search(k: int, input: str, embedder, collection, show_stat: bool 
     
     return results
 
-def retrieve_relevant_results(results: dict[str, list], threshold: float = 0.3) -> None | dict[str, list]:
+def retrieve_relevant_results(results: dict[str, list], threshold: float = 0.25) -> None | dict[str, list]:
     """Helper function used to validate output results by checking relevancy."""
     if results is None:
         return None
@@ -111,12 +111,12 @@ You are a research assistant. Answer the question using only the sources below.
 
 Your rules:
 - Your answers are exclusively sourced from the data shared below.
-- At the end of every answer you provide, support it using the following citation: (Source: <filename>, p. <page>)
+- At the end of every answer you provide, support it using the following citation: (Source: <filename>, p. <list of pages used as reference>)
 - If none of the data shared with you directly answer the query, output raw text: 'I could not find this in the uploaded documents.'
 - Return Raw output with no additional comment or assumption.
+- Return exact quotes used to come up with your answer.
 - Raw output example: 
-'<Your answer>' [filename, page number]. \n
-'<Your answer>' [filename, page number].
+'<Your answer>' (Source: <filename>, p. <list of pages used as reference>).
 """
 
 def build_prompt(query: str, relevant_results: None | dict[str, list], sys_prompt: str = SYSTEM_PROMPT) -> str:
@@ -141,7 +141,7 @@ def build_prompt(query: str, relevant_results: None | dict[str, list], sys_promp
 
     return prompt
 
-def generate_answer(query: str, relevant_results: dict[str, list], llm) -> str:
+def generate_answer(query: str, relevant_results: dict[str, list], llm) -> tuple[str, str]:
     """Wire LlamaIndex to generate answer from Ollama."""
     print("=" * 75)
     prompt = build_prompt(query, relevant_results)
@@ -151,10 +151,29 @@ def generate_answer(query: str, relevant_results: dict[str, list], llm) -> str:
     start = time.time()
 
     response = llm.complete(prompt)
-    print(f"Completed in {time.time()-start:.2f}s")
 
-    return response
-        
+    latency = f"{time.time()-start:.2f}"
+    print(f"Completed in {latency}s")
+
+    return response, latency
+
+
+def query_pipeline(show_stat: bool, query: str, k:int, embedder, collection, llm) -> tuple[str, str]:
+    if show_stat.lower() in ['n', 'no']:
+        top_k = similarity_search(k=k, input=query, embedder=embedder, collection=collection, show_stat=False)
+
+    else: 
+        top_k = similarity_search(k=k, input=query, embedder=embedder, collection=collection)
+    
+    relevant_results = retrieve_relevant_results(results=top_k)
+
+    if not relevant_results: # true for None or empty {}
+        print('\nI could not find this in the uploaded documents.\n')
+        print('Please remember to always be specific. The system does not keep track of message history.')
+
+    else:
+        response, latency = generate_answer(query, relevant_results, llm)
+        return str(response), latency
 
 # --------------------------------------------------
 # MAIN FUNCTION
@@ -177,21 +196,8 @@ def main() -> None:
             break
 
         elif query:
-            if show_stat.lower() in ['n', 'no']:
-                top_k = similarity_search(k=4, input=query, embedder=embedder, collection=collection, show_stat=False)
-
-            else: 
-                top_k = similarity_search(k=4, input=query, embedder=embedder, collection=collection)
-            relevant_results = retrieve_relevant_results(results=top_k)
-
-            if not relevant_results: # true for None or empty {}
-                print('\nI could not find this in the uploaded documents.\n')
-                print('Please remember to be always be specific. The system does not keep track of message history.')
-
-            else:
-                response = generate_answer(query, relevant_results, llm)
-                print(str(response))
-
+            response, _ = query_pipeline(show_stat=show_stat, query=query, k=5, embedder=embedder, collection=collection, llm=llm)
+            print(response)
 
 if __name__ == "__main__":
     main()
