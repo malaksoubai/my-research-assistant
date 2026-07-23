@@ -158,7 +158,7 @@ def generate_answer(query: str, relevant_results: dict[str, list], llm) -> tuple
     return response, latency
 
 
-def query_pipeline(show_stat: bool, query: str, k:int, embedder, collection, llm) -> tuple[str, str]:
+def query_pipeline(show_stat: bool, query: str, k:int, embedder, collection, llm) -> tuple[str, str, dict]:
     if show_stat.lower() in ['n', 'no']:
         top_k = similarity_search(k=k, input=query, embedder=embedder, collection=collection, show_stat=False)
 
@@ -173,7 +173,7 @@ def query_pipeline(show_stat: bool, query: str, k:int, embedder, collection, llm
 
     else:
         response, latency = generate_answer(query, relevant_results, llm)
-        return str(response), latency
+        return str(response), latency, relevant_results
 
 # --------------------------------------------------
 # MAIN FUNCTION
@@ -183,7 +183,7 @@ def main() -> None:
     """Runs the query pipeline to retrieve top-k similar chunks."""
     nlp, embedder, collection, llm = load_tools()
 
-    print("Your Research Assistant is read.\n")
+    print("Your Research Assistant is ready.\n")
 
     show_stat = input("Show retrieval similarity score and distance? (Y/N): ")
 
@@ -196,7 +196,7 @@ def main() -> None:
             break
 
         elif query:
-            response, _ = query_pipeline(show_stat=show_stat, query=query, k=5, embedder=embedder, collection=collection, llm=llm)
+            response, _, _ = query_pipeline(show_stat=show_stat, query=query, k=5, embedder=embedder, collection=collection, llm=llm)
             print(response)
 
 if __name__ == "__main__":
