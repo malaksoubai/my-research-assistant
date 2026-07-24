@@ -143,7 +143,7 @@ def build_prompt(query: str, relevant_results: None | dict[str, list], sys_promp
 
 def generate_answer(query: str, relevant_results: dict[str, list], llm) -> tuple[str, str]:
     """Wire LlamaIndex to generate answer from Ollama."""
-    print("=" * 75)
+    print("-" * 75)
     prompt = build_prompt(query, relevant_results)
 
     print(f"    [STATUS:STARTED]  SYSTEM LOADING AN ANSWER...")
@@ -168,8 +168,8 @@ def query_pipeline(show_stat: str, query: str, k:int, embedder, collection, llm)
     relevant_results = retrieve_relevant_results(results=top_k)
 
     if not relevant_results: # true for None or empty {}
-        print('\nI could not find this in the uploaded documents.\n')
-        print('Please remember to always be specific. The system does not keep track of message history.')
+        print('\nPlease remember to always be specific. The system does not keep track of message history.\n')
+        return 'I could not find this in the uploaded documents.', 0, None
 
     else:
         response, latency = generate_answer(query, relevant_results, llm)
