@@ -78,7 +78,7 @@ def similarity_search(k: int, input: str, embedder, collection, show_stat: bool 
     
     return results
 
-def retrieve_relevant_results(results: dict[str, list], threshold: float = 0.25) -> None | dict[str, list]:
+def retrieve_relevant_results(results: None | dict[str, list], threshold: float = 0.25) -> None | dict[str, list]:
     """Helper function used to validate output results by checking relevancy."""
     if results is None:
         return None
@@ -98,7 +98,7 @@ def retrieve_relevant_results(results: dict[str, list], threshold: float = 0.25)
             filtered_metadatas.append(meta)
 
     if len(filtered_documents) == 0:
-        return {}
+        return None
         
     return {"documents": filtered_documents, "metadatas": filtered_metadatas}
 
@@ -142,20 +142,22 @@ def build_prompt(query: str, relevant_results: None | dict[str, list], sys_promp
     return prompt
 
 def generate_answer(query: str, relevant_results: dict[str, list], llm) -> tuple[str, str]:
-    """Wire LlamaIndex to generate answer from Ollama."""
+    """Generate answer using Groq API directly."""
     print("-" * 75)
     prompt = build_prompt(query, relevant_results)
 
     print(f"    [STATUS:STARTED]  SYSTEM LOADING AN ANSWER...")
-    # print('Awaiting answer. Please wait, this may take some time...')
     start = time.time()
 
-    response = llm.complete(prompt)
+    response = llm.chat.completions.create(
+        model=config.LLM_MODEL,
+        messages=[{"role": "user", "content": prompt}]
+    )
 
     latency = f"{time.time()-start:.2f}"
     print(f"Completed in {latency}s")
 
-    return response, float(latency)
+    return response.choices[0].message.content, float(latency)
 
 
 def query_pipeline(show_stat: str, query: str, k:int, embedder, collection, llm) -> tuple[str, str, dict]:
