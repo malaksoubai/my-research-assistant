@@ -18,8 +18,8 @@ import fitz     # PyMuPDF
 import spacy
 import chromadb
 from sentence_transformers import SentenceTransformer
-from llama_index.llms.ollama import Ollama
-from llama_index.llms.groq import Groq
+# from llama_index.llms.ollama import Ollama
+from groq import Groq as GroqClient
 
 # --------------------------------------------------
 # SETUP
@@ -53,7 +53,7 @@ def load_tools():
         # When using Ollama:
         # llm = Ollama(model=config.LLM_MODEL, request_timeout=120.0)
         # When using Groq:
-        llm = Groq(model=config.LLM_MODEL, api_key=config.API_KEY)
+        llm = GroqClient(api_key=config.API_KEY)
         
     except Exception as e:
         print(f"    [STATUS:FAILED]  TOOLS NOT LOADED.")
