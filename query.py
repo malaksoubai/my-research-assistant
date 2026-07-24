@@ -155,10 +155,10 @@ def generate_answer(query: str, relevant_results: dict[str, list], llm) -> tuple
     latency = f"{time.time()-start:.2f}"
     print(f"Completed in {latency}s")
 
-    return response, latency
+    return response, float(latency)
 
 
-def query_pipeline(show_stat: bool, query: str, k:int, embedder, collection, llm) -> tuple[str, str, dict]:
+def query_pipeline(show_stat: str, query: str, k:int, embedder, collection, llm) -> tuple[str, str, dict]:
     if show_stat.lower() in ['n', 'no']:
         top_k = similarity_search(k=k, input=query, embedder=embedder, collection=collection, show_stat=False)
 
