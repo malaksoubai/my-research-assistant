@@ -7,7 +7,7 @@ PDF_FOLDER = "data/pdfs"
 MIN_TEXT_PER_PAGE = 50
 
 # Chunks
-CHUNK_SIZE = 400
+CHUNK_SIZE = 200
 CHUNK_OVERLAP = 40
 
 # spaCy NLP
