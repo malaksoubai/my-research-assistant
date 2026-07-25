@@ -3,6 +3,7 @@
 import time
 import json
 
+import config
 from ingest import load_tools
 from query import query_pipeline, retrieve_relevant_results, similarity_search
 
@@ -215,6 +216,10 @@ def run_one_k_with_llm(k: int, embedder, collection, llm) -> dict:
 def print_summary(run_results: list[dict]) -> None:
     """Print results to the dashboard"""
     print ("-" * 70)
+    print("SYSTEM SETTINGS")
+    print ("-" * 70)
+    print(f"Chunk size: {config.CHUNK_SIZE} | Chunk overlap: {config.CHUNK_OVERLAP} | LLM model: {config.LLM_MODEL}")
+    print("=" * 70)
     print("EVALUATION RESULTS")
     print("-" * 70)
     print(f'{"k":<5} {"Avg accuracy":<15} {"Avg passed":<15} {"Avg failed":<15} {"Avg latency (sec)"}')
