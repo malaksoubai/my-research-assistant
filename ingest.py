@@ -11,9 +11,10 @@
 
 import config
 import os
-
+import sys
 from pathlib import Path
 import re
+
 import fitz     # PyMuPDF
 import spacy
 import chromadb
@@ -42,8 +43,9 @@ def load_tools():
 
         # table 
         # NOTE: use following two lines only to wipe all entries of the collection
-        # client.delete_collection(config.COLLECTION_NAME)
-        # print("Vector database wiped and recreated.")
+        if "--reset" in sys.argv:
+            client.delete_collection(config.COLLECTION_NAME)
+            print("Vector database wiped and recreated.")
 
         collection = client.get_or_create_collection(
             name=config.COLLECTION_NAME,
