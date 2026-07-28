@@ -7,7 +7,7 @@ A RAG pipeline that ingests PDFs, retrieves relevant passages semantically, and 
 
 ## Table of Content
 1. Overview (what it does, who it's for)
-2. Tech stack (tools and why you picked each)
+2. Tech stack (tools used)
 3. Architecture (how it works: diagram link or description)
 4. Setup & installation (exact steps to run it)
 5. Usage (how to actually use it)
