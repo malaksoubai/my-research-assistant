@@ -122,7 +122,7 @@ Retrieval accuracy was measured across three chunk sizes and five k values.
 
 **Key finding**: a chunk size of 200 words with k=5 is the optimal configuration, hitting the 80% accuracy target with the smallest retrieval footprint.
 
-<img width="218" height="63" alt="image" src="https://github.com/user-attachments/assets/dee28de7-b85c-411c-8cbe-3014b3f37f1e" />
+<img width="436" height="129" alt="image" src="https://github.com/user-attachments/assets/dee28de7-b85c-411c-8cbe-3014b3f37f1e" />
 
 **Observations**:
 
