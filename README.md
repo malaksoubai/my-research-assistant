@@ -7,7 +7,7 @@ A RAG pipeline that ingests PDFs, retrieves relevant passages semantically, and 
 
 ## Table of Content
 1. Overview (what it does, who it's for)
-2. Tech stack (tools and why you picked each)
+2. Tech stack (tools used)
 3. Architecture (how it works: diagram link or description)
 4. Setup & installation (exact steps to run it)
 5. Usage (how to actually use it)
@@ -18,7 +18,7 @@ A RAG pipeline that ingests PDFs, retrieves relevant passages semantically, and 
 ## Overview
 The Research Assistant is a full Retrieval-Augmented Generation (RAG) pipeline that ingests PDFs, retrieves relevant chunks semantically, and answers questions with cited sources pointing to the file name and page number used as source material. The project includes an evaluation dashboard to test different system settings and their retrieval accuracy score.
 
-This may useful for anyone who reads more papers than they can remember, like students, analysts, researchers, etc. They can ask questions across a library of PDFs instead of ctrl-F-ing one at a time. It was mainly develop as a learning tool to gain hands-on experience with the core tools of NLP and AI engineering.
+This may be useful for anyone who reads more papers than they can remember, like students, analysts, researchers, etc. They can ask questions across a library of PDFs instead of ctrl-F-ing one at a time. It was mainly develop as a learning tool to gain hands-on experience with the core tools of NLP and AI engineering.
 
 ## Tech Stack 
 [![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)](https://www.python.org/)
@@ -32,7 +32,7 @@ This may useful for anyone who reads more papers than they can remember, like st
 ## Architecture
 There are two main pipelines used in the project.
 
-Ingestion (runs once per batch of PDFs, or after system level changes):
+Ingestion (runs once per batch of PDFs, or after system-level changes):
 
 > PDF files → PyMuPDF extraction → text cleaning → chunking + metadata → spaCy NER → Sentence Transformers embeddings → ChromaDB
 
@@ -46,7 +46,7 @@ Query (runs on every user question):
 
 - Install [Python 3.11](https://www.python.org/)
 
-- Get free [Groq API Key](console.groq.com). Create a .env file in the project root:
+- Get a free [Groq API Key](console.groq.com). Create a .env file in the project root:
 ```bash
 GROQ_API_KEY="your_key_here"
 ```
@@ -77,7 +77,7 @@ Place PDF files in the `data/pdfs/` folder.
 
 2. Ingest
 
-Make sure you are inside the virtual environnement.
+Make sure you are inside the virtual environment.
 
 ```bash
 # ingest new PDFs (skips already-ingested files and only ingests new ones)
@@ -110,7 +110,7 @@ You've exited the program.
 
 4. Run Evaluation
 
-Update `evaluate.py` update the `QNA_SET` constant with questions and answers from your data/pdfs documents. Then, run:
+In `evaluate.py`, update the `QNA_SET` constant with questions and answers from your data/pdfs documents. Then, run:
 
 ```bash
 python evaluate.py
@@ -120,12 +120,9 @@ The evaluation dashboard runs 15 test questions across multiple k values and rep
 ## Evaluation results
 Retrieval accuracy was measured across three chunk sizes and five k values. 
 
-**Key finding**: chunk size of 200 words with k=5 is the optimal configuration, hitting the 80% accuracy target with the smallest retrieval footprint.
+**Key finding**: a chunk size of 200 words with k=5 is the optimal configuration, hitting the 80% accuracy target with the smallest retrieval footprint.
 
-Chunk Size	k=1	k=3	k=5	k=8	k=10	Failed
-200 words	40%	73%	80%	87%	87%	    0%
-400 words	27%	60%	60%	87%	87%	    6.7%
-600 words	13%	40%	67%	73%	80%	    13.3%
+<img width="436" height="129" alt="image" src="https://github.com/user-attachments/assets/dee28de7-b85c-411c-8cbe-3014b3f37f1e" />
 
 **Observations**:
 
@@ -144,7 +141,7 @@ Chunk Size	k=1	k=3	k=5	k=8	k=10	Failed
 
 - Multi-hop questions perform poorly. Questions requiring reasoning across multiple documents simultaneously are a known limitation of standard RAG architectures.
 
-- Chat history is not retained, every question has to be posed anew.
+- Chat history is not retained; every question has to be posed anew.
 
 - Similarity scores are lower than expected. Cosine similarity between short natural language queries and long academic passages typically ranges between 0.28–0.58 in this system.
 
@@ -152,7 +149,7 @@ Chunk Size	k=1	k=3	k=5	k=8	k=10	Failed
 
 This project was my first hands-on experience with NLP and AI engineering. Some of the key lessons I learned were:
 
-- Chunking strategy matters a lot. The evaluation data showed that chunk size had a larger impact on retrieval accuracy than any other parameter. Getting chunking right is thereof very important.
+- Chunking strategy matters a lot. The evaluation data showed that chunk size had a larger impact on retrieval accuracy than any other parameter. Getting chunking right is therefore very important.
 
 - I deliberately avoided using LlamaIndex's automated query engine and built the retrieval and generation steps manually. This meant I could understand what is happening under the hood in better details and get more say in my system settings. It also allowed me to run my evaluation dashboard on multiple test cases to draw some conclusions. 
 
